@@ -1,0 +1,1674 @@
+if not game["Loaded"] then game["Loaded"]:Wait() end
+repeat task.wait(.06) until game:GetService("Players").LocalPlayer
+
+local Http=game:GetService("HttpService")
+local Players=game:GetService("Players")
+local LP=Players.LocalPlayer
+local TCS=game:GetService("TextChatService")
+local CoreGui=game:GetService("CoreGui")
+
+local YourLang = "tr" 
+local tr_lang = "en" 
+local auto_translate_on = false 
+
+local function req(opt)
+    local fn=(syn and syn.request) or (http and http.request) or http_request or request
+    if fn then return fn(opt) end
+    return Http:RequestAsync(opt)
+end
+
+local gv=isfile and isfile("googlev.txt") and readfile("googlev.txt") or ""
+
+local function consent(body)
+    local t={}
+    for tag in body:gmatch('<input type="hidden" name=".-" value=".-">') do
+        local k,v=tag:match('<input type="hidden" name="(.-)" value="(.-)">');
+        t[k]=v
+    end
+    gv=t.v or "";
+    if writefile then writefile("googlev.txt",gv) end
+end
+
+local function got(url,method,body)
+    method=method or "GET"
+    local res=req({Url=url,Method=method,Headers={cookie="CONSENT=YES+"..(gv or "")},Body=body})
+    local b=res.Body or res.body or "";
+    if type(b)~="string" then b=tostring(b) end
+    if b:match("https://consent.google.com/s") or b:match("consent") then
+        consent(b)
+        res=req({Url=url,Method=method,Headers={cookie="CONSENT=YES+"..(gv or "")},Body=body})
+    end
+    return res
+end
+
+local langs={
+    auto="Automatic",af="Afrikaans",sq="Albanian",am="Amharic",ar="Arabic",hy="Armenian",az="Azerbaijani",eu="Basque",be="Belarusian",bn="Bengali",bs="Bosnian",bg="Bulgarian",ca="Catalan",ceb="Cebuano",ny="Chichewa",
+    ["zh-cn"]="Chinese Simplified",["zh-tw"]="Chinese Traditional",co="Corsican",hr="Croatian",cs="Czech",da="Danish",nl="Dutch",en="English",eo="Esperanto",et="Estonian",tl="Filipino",fi="Finnish",fr="French",fy="Frisian",
+    gl="Galician",ka="Georgian",de="German",el="Greek",gu="Gujarati",ht="Haitian Creole",ha="Hausa",haw="Hawaiian",iw="Hebrew",hi="Hindi",hmn="Hmong",hu="Hungarian",is="Icelandic",ig="Igbo",id="Indonesian",ga="Irish",it="Italian",
+    ja="Japanese",jw="Javanese",kn="Kannada",kk="Kazakh",km="Khmer",ko="Korean",ku="Kurdish (Kurmanji)",ky="Kyrgyz",lo="Lao",la="Latin",lv="Latvian",lt="Lithuanian",lb="Luxembourgish",mk="Macedonian",mg="Malagasy",ms="Malay",
+    ml="Malayalam",mt="Maltese",mi="Maori",mr="Marathi",mn="Mongolian",my="Myanmar (Burmese)",ne="Nepali",no="Norwegian",ps="Pashto",fa="Persian",pl="Polish",pt="Portuguese",pa="Punjabi",ro="Romanian",ru="Russian",sm="Samoan",
+    gd="Scots Gaelic",sr="Serbian",st="Sesotho",sn="Shona",sd="Sindhi",si="Sinhala",sk="Slovak",sl="Slovenian",so="Somali",es="Spanish",su="Sundanese",sw="Swahili",sv="Swedish",tg="Tajik",ta="Tamil",te="Telugu",th="Thai",tr="Turkish",
+    uk="Ukrainian",ur="Urdu",uz="Uzbek",vi="Vietnamese",cy="Welsh",xh="Xhosa",yi="Yiddish",yo="Yoruba",zu="Zulu"
+}
+
+local function iso(s)
+    if not s then return end
+    for k,v in pairs(langs) do
+        if k==s or v==s or string.lower(k)==string.lower(s) then return k end
+    end
+    return "auto"
+end
+
+local function q(data)
+    local s=""
+    for k,v in pairs(data) do
+        if type(v)=="table" then for _,vv in pairs(v) do s..="&"..Http:UrlEncode(k).."="..Http:UrlEncode(vv) end
+        else s..="&"..Http:UrlEncode(k).."="..Http:UrlEncode(v) end
+    end
+    return s:sub(2)
+end
+
+local jE=function(x) return Http:JSONEncode(x) end
+local jD=function(x) return Http:JSONDecode(x) end
+local rpc="MkEWBc"
+local root="https://translate.google.com/"
+local exec="https://translate.google.com/_/TranslateWebserverUi/data/batchexecute"
+local fsid,bl,rid=nil,nil,math.random(1000,9999)
+
+do
+    local b=(got(root).Body or "")
+    fsid=b:match('"FdrFJe":"(.-)"') or fsid
+    bl=b:match('"cfb2h":"(.-)"') or bl
+    if not fsid or not bl then
+        fsid="dummy"; bl="dummy"
+    end
+end
+
+local function translate(txt,tgt,src)
+    rid=rid+10000
+    tgt=iso(tgt) or "en"; src=iso(src) or "auto"
+    local data={{txt,src,tgt,true},{nil}}
+    local freq={{{rpc,jE(data),nil,"generic"}}}
+    local url=exec.."?"..q{rpcids=rpc,["f.sid"]=fsid,bl=bl,hl="en",_reqid=rid-10000,rt="c"}
+    local body=q{["f.req"]=jE(freq)}
+    local res=got(url,"POST",body)
+    local ok,out=pcall(function()
+        local raw=(res.Body or res.body or ""):match("%[.-%]\n") or ""
+        local arr=jD(raw)
+        return jD(arr[1][3])
+    end)
+    if not ok or not out or not out[2] or not out[2][1] or not out[2][1][1] or not out[2][1][1][6] or not out[2][1][1][6][1] or not out[2][1][1][6][1][1] then
+        return nil
+    end
+    return out[2][1][1][6][1][1]
+end
+
+local function translateInfo(txt, tgt, src)
+    rid = rid + 10000
+    tgt = iso(tgt) or "en"
+    src = iso(src) or "auto"
+    local data = {{txt, src, tgt, true}, {nil}}
+    local freq = {{{rpc, jE(data), nil, "generic"}}}
+    local url = exec.."?"..q{rpcids=rpc, ["f.sid"]=fsid, bl=bl, hl="en", _reqid=rid-10000, rt="c"}
+    local body = q{["f.req"]=jE(freq)}
+    local res = got(url, "POST", body)
+    local ok, out = pcall(function()
+        local raw = (res.Body or res.body or ""):match("%[.-%]\n") or ""
+        local arr = jD(raw)
+        return jD(arr[1][3])
+    end)
+    if not ok or not out or not out[2] or not out[2][1] or not out[2][1][1] or not out[2][1][1][6] or not out[2][1][1][6][1] or not out[2][1][1][6][1][1] then return nil, nil end
+    local translated = out[2][1][1][6][1][1]
+    local detected = out[3] or "AUTO"
+    return translated, detected
+end
+
+local function sys(msg)
+    local chans=TCS:WaitForChild("TextChannels")
+    local c=chans:FindFirstChild("RBXSystem") or chans:FindFirstChild("RBXGeneral") or chans:GetChildren()[1]
+    if c and c.DisplaySystemMessage then
+        c:DisplaySystemMessage(msg)
+    end
+end
+
+sys("🚀 Chat Translator Ready! (Incoming: "..(langs[YourLang] or YourLang)..", Send: "..(langs[tr_lang] or tr_lang)..")")
+
+TCS.MessageReceived:Connect(function(msg)
+    if not msg.TextSource or msg.TextSource.UserId == LP.UserId then return end
+    local uid = msg.TextSource.UserId
+    local p = Players:GetPlayerByUserId(uid)
+    local disp = p and p.DisplayName or tostring(uid)
+    local user = p and p.Name or tostring(uid)
+    local nameStr = (disp == user) and ("@"..user) or (disp.." (@"..user..")")
+    local text, detected = translateInfo(msg.Text, YourLang, "auto")
+    if text and text ~= "" and text ~= msg.Text and detected ~= "AUTO" then
+        sys("[" .. string.upper(detected) .. "] {" .. nameStr .. "}: " .. text)
+    end
+end)
+
+local library = {}
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Chat = game:GetService("Chat")
+local RunService = game:GetService("RunService")
+local channel = game.TextChatService:WaitForChild("TextChannels"):WaitForChild("RBXGeneral")
+
+local CONFIG = {
+    NotificationWidth = 350,
+    NotificationHeight = 80,
+    Padding = 10,
+    InternalPadding = 10,
+    IconSize = 40,
+    DisplayTime = 5,
+    BackgroundColor = Color3.fromRGB(35, 35, 35),
+    BackgroundTransparency = 0.1,
+    StrokeColor = Color3.fromRGB(100, 100, 150),
+    StrokeThickness = 1,
+    TextColor = Color3.fromRGB(255, 255, 255),
+    TitleFont = Enum.Font.SourceSansSemibold,
+    TitleSize = 18,
+    ContentFont = Enum.Font.SourceSans,
+    ContentSize = 15,
+    Icons = {
+        Info = "rbxassetid://112082878863231",
+        Warn = "rbxassetid://117107314745025",
+        Error = "rbxassetid://77067602950967",
+    }
+}
+
+local playerGui = LP:WaitForChild("PlayerGui")
+local screenGui = nil
+local notificationList = {}
+local isInitialized = false
+
+local function initializeUI()
+    if isInitialized then return end
+    screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "EnhancedNotifUI"
+    screenGui.Parent = playerGui
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.DisplayOrder = 999
+    screenGui.ResetOnSpawn = false
+    isInitialized = true
+end
+
+local function updateNotificationPositions()
+    if not screenGui then return end
+    local currentY = -CONFIG.Padding
+    local itemsToRemove = {}
+    for i = 1, #notificationList do
+        local notifFrame = notificationList[i]
+        if not notifFrame or not notifFrame.Parent then
+            table.insert(itemsToRemove, i)
+            continue
+        end
+        local targetPos = UDim2.new(1, -CONFIG.Padding, 1, currentY)
+        notifFrame.Position = targetPos
+        currentY = currentY - (notifFrame.AbsoluteSize.Y + CONFIG.Padding)
+    end
+    for i = #itemsToRemove, 1, -1 do
+        table.remove(notificationList, itemsToRemove[i])
+    end
+end
+
+local function createNotification(contentText, titleText, notifType)
+    initializeUI()
+    local frame = Instance.new("Frame")
+    frame.Name = "NotificationFrame"
+    frame.Position = UDim2.new(1, CONFIG.NotificationWidth + 50, 1, 0)
+    frame.Size = UDim2.new(0, CONFIG.NotificationWidth, 0, CONFIG.NotificationHeight)
+    frame.AnchorPoint = Vector2.new(1, 1)
+    frame.BackgroundColor3 = CONFIG.BackgroundColor
+    frame.BackgroundTransparency = CONFIG.BackgroundTransparency
+    frame.BorderSizePixel = 0
+    frame.ClipsDescendants = true
+    frame.LayoutOrder = -#notificationList
+    frame.Parent = screenGui
+    frame.AutomaticSize = Enum.AutomaticSize.Y
+    local UIGradient = Instance.new("UIGradient")
+    UIGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 140, 200)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 110, 200))
+    }
+    UIGradient.Rotation = 45
+    UIGradient.Parent = frame
+    task.spawn(function()
+        while frame and frame.Parent do
+            TweenService:Create(UIGradient, TweenInfo.new(5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {Rotation = UIGradient.Rotation + 360}):Play()
+            task.wait(5)
+        end
+    end)
+    local uiCorner = Instance.new("UICorner", frame)
+    uiCorner.CornerRadius = UDim.new(0, 6)
+    local uiStroke = Instance.new("UIStroke", frame)
+    uiStroke.Color = CONFIG.StrokeColor
+    uiStroke.Thickness = CONFIG.StrokeThickness
+    uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    local uiPadding = Instance.new("UIPadding", frame)
+    uiPadding.PaddingTop = UDim.new(0, CONFIG.InternalPadding)
+    uiPadding.PaddingBottom = UDim.new(0, CONFIG.InternalPadding)
+    uiPadding.PaddingLeft = UDim.new(0, CONFIG.InternalPadding)
+    uiPadding.PaddingRight = UDim.new(0, CONFIG.InternalPadding)
+    local iconImage = Instance.new("ImageLabel", frame)
+    iconImage.Name = "Icon"
+    iconImage.Size = UDim2.new(0, CONFIG.IconSize, 0, CONFIG.IconSize)
+    iconImage.BackgroundTransparency = 1
+    iconImage.Image = CONFIG.Icons[notifType] or CONFIG.Icons.Info
+    iconImage.ScaleType = Enum.ScaleType.Fit
+    iconImage.AnchorPoint = Vector2.new(0, 0.5)
+    iconImage.Position = UDim2.new(0, 0, 0.5, 0)
+    local iconAspectRatio = Instance.new("UIAspectRatioConstraint", iconImage)
+    iconAspectRatio.AspectRatio = 1.0
+    iconAspectRatio.DominantAxis = Enum.DominantAxis.Height
+    local textFrame = Instance.new("Frame", frame)
+    textFrame.Name = "TextContainer"
+    textFrame.BackgroundTransparency = 1
+    textFrame.Size = UDim2.new(1, -(CONFIG.IconSize + CONFIG.InternalPadding + 5), 1, 0)
+    textFrame.Position = UDim2.new(0, CONFIG.IconSize + 5, 0, 0)
+    textFrame.AutomaticSize = Enum.AutomaticSize.Y
+    local textListLayout = Instance.new("UIListLayout", textFrame)
+    textListLayout.FillDirection = Enum.FillDirection.Vertical
+    textListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    textListLayout.Padding = UDim.new(0, 2)
+    textListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    local title = Instance.new("TextLabel", textFrame)
+    title.Name = "Title"
+    title.Text = titleText or "Notification"
+    title.Font = CONFIG.TitleFont
+    title.TextSize = CONFIG.TitleSize
+    title.TextColor3 = CONFIG.TextColor
+    title.TextWrapped = true
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.BackgroundTransparency = 1
+    title.AutomaticSize = Enum.AutomaticSize.Y
+    title.Size = UDim2.new(1, 0, 0, CONFIG.TitleSize)
+    title.LayoutOrder = 1
+    local content = Instance.new("TextLabel", textFrame)
+    content.Name = "Content"
+    content.Text = contentText or "Notification Content"
+    content.Font = CONFIG.ContentFont
+    content.TextSize = CONFIG.ContentSize
+    content.TextColor3 = CONFIG.TextColor
+    content.TextWrapped = true
+    content.TextXAlignment = Enum.TextXAlignment.Left
+    content.TextYAlignment = Enum.TextYAlignment.Top
+    content.BackgroundTransparency = 1
+    content.AutomaticSize = Enum.AutomaticSize.Y
+    content.Size = UDim2.new(1, 0, 0, CONFIG.ContentSize)
+    content.LayoutOrder = 2
+    table.insert(notificationList, 1, frame)
+    updateNotificationPositions()
+    local initialTargetY = -CONFIG.Padding
+    local initialTargetPos = UDim2.new(1, -CONFIG.Padding, 1, initialTargetY)
+    frame.Position = initialTargetPos
+    task.delay(CONFIG.DisplayTime, function()
+        if frame and frame.Parent then
+            local foundIndex = table.find(notificationList, frame)
+            if foundIndex then table.remove(notificationList, foundIndex) end
+            frame:Destroy()
+            updateNotificationPositions()
+        end
+    end)
+    return frame
+end
+
+function library.Info(content, title) return createNotification(content or "Information", title or "Info", "Info") end
+function library.Warn(content, title) return createNotification(content or "Warning occurred", title or "Warning", "Warn") end
+function library.Error(content, title) return createNotification(content or "An error occurred", title or "Error", "Error") end
+local NotificationLibrary = library
+
+
+local WordMap = {
+["fuck"] = "fιɹჺl‹",
+["fucks"] = "fιɹჺkร",
+["fak"] = "fสl‹",
+["fuckass"] = "fιɹჺkลѕѕ",
+["marijuana"] = "ıาาarịjιɹaıาa",
+["watchpeopledie"] = "ฬสťclาpeჲpleԀịe",
+["shit"] = "slาịť",
+["shits"] = "slาịťs",
+["shitting"] = "slาịťťịıาg",
+["shitted"] = "slาịťťed",
+["bullshit"] = "lɔuIIslาịť",
+["pussies"] = "ꞁↄιɹssịes",
+["pedophiles"] = "pɐdჲplาịIeร",
+["pedophile"] = "pɐdჲplาịIe",
+["pedo"] = "pɐdჲ",
+["zoophile"] = "zჲჲplาịle",
+["pussys"] = "ꞁↄιɹรรyร",
+["bullshitting"] = "lɔuIIslาịťtịıาg",
+["nigga"] = "ıาịဌဌส",
+["nigger"] = "ıาịჭჭeꞅ",
+["nig"] = "ıาịဌ",
+["deadniggers"] = "ԀeสԀıาịჭჭeꞅร",
+["negro"] = "ıาeဌꞅo",
+["negros"] = "ıาeဌꞅoร",
+["porn"] = "poꞅıา",
+["porno"] = "poꞅıาo",
+["pornography"] = "poꞅıาoဌꞅaplาұ",
+["sex"] = "รɐẍ",
+["fuckers"] = "fιɹჺl‹eꞅs",
+["fucker"] = "fιɹჺl‹eꞅ",
+["fucked"] = "fιɹჺl‹ed",
+["fucklard"] = "fιɹჺl‹Iสrd",
+["fuckie"] = "fιɹჺl‹ịɐ",
+["niggas"] = "ıาịဌဌสร",
+["niggers"] = "ıาịჭჭeꞅร",
+["sexy"] = "sɐẍұ",
+["slave"] = "sӀสѵɐ",
+["rape"] = "rสpɐ",
+["raper"] = "rสpɐr",
+["rapist"] = "ꞅapiรť",
+["kys"] = "l‹ys",
+["jerking"] = "ȷ۬eꞅl‹iıาg",
+["jerks"] = "ȷ۬eꞅl‹ร",
+["jerk"] = "ȷ۬eꞅl‹",
+["instagram"] = "ịıาsťสgꞅสıาา",
+["cock"] = "ჺჲჺl‹",
+["fucking"] = "fιɹcl‹iıาg",
+["anal"] = "สıาสI",
+["boobs"] = "lɔჲჲlɔs",	
+["boobies"] = "lɔჲჲlɔịes",
+["hentai"] = "lาeıาtสi",
+["hentaihaven"] = "lาeıาtสilาสѵen",
+["love"] = "Ioѵɐ",
+["loves"] = "Ioѵɐs",
+["loving"] = "Ioѵɐiıาg",
+["ass"] = "ลรร",
+["fatass"] = "fสťลรร",
+["fat"] = "fสť",
+["deadass"] = "dɐสdลรร",
+["motherfucker"] = "ıาาoťlาeꞅfιɹჺl‹eꞅ",
+["gf"] = "ဌfׂׂׂׂׂׂׂׂ",
+["girlfriend"] = "gịꞅIfꞅịeıาd",
+["bf"] = "lɔfׂׂׂׂׂׂׂׂ",
+["boyfriend"] = "lɔoyfꞅịeıาd",
+["pornhub"] = "porıาlาιɹlɔ",
+["shitty"] = "slาịťtұ",
+["robux"] = "ꞅolɔιɹx",
+["nazi"] = "ıาสzị",
+["adolf"] = "สdჲlf",
+["hitler"] = "lาiṭlɐꞅ",
+["bitch"] = "lɔitჺlา",
+["bitchs"] = "lɔitჺlาs",
+["youtube"] = "yoιɹṭιɹlɔe",
+["lmao"] = "Iıาาสo",
+["lmfao"] = "Iıาาfสo",
+["dick"] = "dịჺl‹",
+["dicks"] = "diჺl‹s",
+["fag"] = "fสဌ",
+["fags"] = "fสဌs",
+["faggot"] = "fสဌဌჲť",
+["faggots"] = "fสဌဌჲťร",
+["faggoted"] = "fสဌဌჲťed",
+["pussy"] = "ꞁↄιɹรรy",
+["slut"] = "sIιɹṭ",
+["esex"] = "ɐรɐẍ",
+["kill"] = "l‹iII",
+["killing"] = "l‹iIIịıาg",
+["yourself"] = "yჲιɹꞅรɐӏf",
+["himself"] = "lาịıาาsɐӏf",
+["him"] = "lาiıาา",
+["myself"] = "ıาาyรɐӏf",
+["raping"] = "rสpiıาg",
+["rapes"] = "rสpɐs",
+["raped"] = "rสpɐd",
+["erection"] = "ɐrɐჺtịoıา",
+["penis"] = "pɐıาis",
+["bulk"] = "lɔιɹIk",
+["talking"] = "tสIl‹iıาg",
+["volume"] = "ѵoIιɹıาาe",
+["already"] = "สIrɐสdy",
+["dumass"] = "dιɹıาาลรร",
+["dumbass"] = "dιɹıาาbลรร",
+["cliff"] = "ჺIiff",
+["asshole"] = "ลรรlาჲlɐ",
+["hole"] = "lาolɐ",
+["hoe"] = "lาoɐ",
+["fentanyl"] = "fɐıาtสıาyI",	
+["heil"] = "lาeiƖ",
+["hail"] = "lาสiƖ",
+["imbecile"] = "iıาาlɔɐჺiIɐ",
+["holy"] = "lาჲӏy",
+["black"] = "lɔlสcl‹",
+["white"] = "ฬlาitɐ",
+["racist"] = "ꞅสჺiรt",
+["baby"] = "lɔสlɔy",
+["babe"] = "lɔสlɔe",
+["cocaine"] = "ჺoჺสiıาe",
+["whore"] = "ฬlาoꞅe",
+["cums"] = "cιɹıาาs",
+["cum"] = "cιɹıาา",
+["cumming"] = "cιɹıาาıาาiıาg",
+["cummed"] = "cιɹıาาıาาed",
+["alot"] = "สIჲt",
+["bitches"] = "lɔitჺlาeร",
+["stfu"] = "รtfιɹ",
+["shitskinned"] = "slาịťskiıาıาed",
+["pmo"] = "pıาาo",
+["wtf"] = "wťfׂׂׂׂׂׂׂׂ",
+["idgaf"] = "idဌสf",
+["my"] = "ıาาy",
+["u"] = "ιɹ",
+["ur"] = "ιɹꞅ",
+["your"] = "yoιɹꞅ",
+["yours"] = "yoιɹꞅร",
+["wanna"] = "wสıาıาส",
+["have"] = "lาสѵe",
+["having"] = "lาสѵiıาg",
+["lgbt"] = "Iglɔť",
+["brutally"] = "lɔrιɹtสIIy",
+["lol"] = "IoI",
+["blackie"] = "lɔlสcl‹ie",
+["is"] = "iร",
+["pox"] = "poӽ",
+["this"] = "tlาịร",
+["should"] = "slาoιɹId",
+["hate"] = "lาสṭɐ",
+["did"] = "dịd",
+["off"] = "ჲff",
+["cant"] = "cสıาt",
+["with"] = "witlา",
+["who"] = "wlาo",
+["eat"] = "ɐสt",
+["eats"] = "ɐสts",
+["skid"] = "sl‹ịd",
+["kid"] = "l‹id",
+["like"] = "Iil‹ɐ",
+["liked"] = "Iil‹ɐd",
+["speak"] = "spɐสk",
+["stupid"] = "stιɹpịd",
+["slides"] = "sIịdɐs",
+["lost"] = "Iჲst",
+["sledgehammer"] = "sIɐԀgɐlาaıาาıาาɐr",
+["video"] = "ѵidɐo",
+["jungle"] = "ȷιɹıาgIɐ",
+["small"] = "sıาาสII",
+["built"] = "lɔιɹiIt",
+["lame"] = "Iสıาาe",
+["anyone"] = "สıาyoıาɐ",
+["every"] = "ɐѵɐrұ",
+["whoever"] = "wlาჲeѵeꞅ",
+["also"] = "สIsჲ",
+["yo"] = "yჲ",
+["can"] = "cสıา",
+["all"] = "สӏӏ",
+["rbxassetid"] = "rlɔxลรรɐtid",
+["rule"] = "rιɹIɐ",
+["shut"] = "slาιɹt",
+["monkey"] = "ıาาoıาl‹ey",
+["girl"] = "giꞅI",
+["girls"] = "giꞅIs",
+["suicide"] = "รιɹicidɐ",
+["suicides"] = "รιɹicidɐร",
+["im"] = "iıาา",
+["iam"] = "iสıาา",
+["in"] = "iıา",
+["children"] = "ჺlาildrɐıา",
+["you"] = "yჲιɹ",
+["are"] = "สrɐ",
+["had"] = "lาสd",
+["want"] = "wสıาt",
+["wants"] = "wสıาtร",
+["mommy"] = "ıาาoıาาıาาұ",
+["mama"] = "ıาาสıาาส",
+["blowjob"] = "lɔIowjolɔ",
+["mom"] = "ıาาoıาา",
+["moms"] = "ıาาoıาาs",
+["daddy"] = "ԀสԀԀұ",
+["dads"] = "ԀสԀร",
+["killed"] = "l‹iIIɐd",
+["kills"] = "l‹iIIร",
+["dude"] = "dιɹdɐ",
+["gay"] = "ဌสy",
+["gays"] = "ဌสyร",
+["down"] = "dჲwıา",
+["will"] = "ฬịII",
+["squirt"] = "รqιɹiꞅt",
+["burn"] = "lɔιɹrıา",
+["user"] = "ιɹsɐꞅ",
+["users"] = "ιɹsɐꞅs",
+["add"] = "สԀԀ",
+["suck"] = "sιɹჺl‹",
+["sucks"] = "sιɹჺl‹s",
+["sucker"] = "sιɹჺl‹ɐr",
+["sucking"] = "sιɹჺl‹iıาဌ",
+["lick"] = "Iiჺl‹",
+["licks"] = "Iiჺl‹s",
+["licking"] = "Iiჺl‹iıาဌ",
+["dirty"] = "dịrťy",
+["from"] = "fꞅoıาา",
+["top"] = "tჲp",
+["wow"] = "ฬoฬ",
+["color"] = "ჺჲIჲr",
+["paint"] = "pสiıาt",
+["nice"] = "ıาiჺɐ",
+["child"] = "ჺlาịld",
+["public"] = "pιɹlɔIic",
+["put"] = "pιɹt",
+["puts"] = "pιɹts",
+["dildo"] = "dịIdჲ",
+["obama"] = "olɔสıาาส",
+["dih"] = "Ԁilา",
+["dihh"] = "Ԁilาlา",
+["dihhh"] = "Ԁilาlาlา",
+["just"] = "ȷ۬ιɹst",
+["us"] = "ιɹs",
+["damn"] = "dสıาาıา",
+["dam"] = "dสıาา",
+["cunt"] = "cιɹıาt",
+["prick"] = "priჺl‹",
+["lemme"] = "Ieıาาıาาe",
+["let"] = "Iɐť",
+["master"] = "ıาาสstɐr",
+["mastered"] = "ıาาสstɐꞅed",
+["mastering"] = "ıาาสstɐꞅiฑg",
+["help"] = "lาeIp",
+["helping"] = "lาeIpiıาg",
+["show"] = "slาoฬ",
+["showing"] = "slาoฬiıาဌ",
+["screen"] = "sჺrɐɐıา",
+["deeper"] = "dɐɐpɐꞅ",
+["gg"] = "ဌဌ",
+["autistic"] = "สιɹtiรtiჺ",
+["terrorist"] = "ťɐꞅꞅჲꞅịรť",
+["hard"] = "lาสrd",
+["hardcode"] = "lาสrdჺodɐ",
+["and"] = "สıาd",
+["bored"] = "lɔoꞅɐd",
+["boring"] = "lɔoriıาဌ",
+["now"] = "ıาჲw",
+["cracker"] = "crสჺl‹ɐr",
+["her"] = "lาɐr",
+["he"] = "lาe",
+["hes"] = "lาɐs",
+["she"] = "slาe",
+["shes"] = "slาes",
+["mine"] = "ıาาiıาe",
+["bro"] = "lɔrჲ",
+["brother"] = "lɔrჲtlาɐr",
+["brotha"] = "lɔrotlาส",
+["anyways"] = "สıาyฬสys",
+["whats"] = "ฬlาสts",
+["bye"] = "lɔye",
+["cya"] = "ჺyส",
+["again"] = "สgสiıา",
+["nah"] = "ıาalา",
+["wsp"] = "ฬsp",
+["wsg"] = "ฬsဌ",
+["shawty"] = "slาสwťұ",
+["cut"] = "cιɹṭ",
+["gonna"] = "gჲıาıาส",
+["gotta"] = "gჲṭṭส",
+["swallow"] = "รwสIIჲw",
+["how"] = "lาჲwׂׂׂׂׂׂׂׂ",
+["about"] = "สlɔჲιɹt",
+["slice"] = "รIiჺɐ",
+["but"] = "lɔιɹt",
+["or"] = "ჲr",
+["prob"] = "prolɔ",
+["problem"] = "prolɔIeıาา",
+["tags"] = "ṭสဌs",
+["hi"] = "lาi",
+["hello"] = "lาɐIIo",
+["the"] = "tlาɐ",
+["hell"] = "lาɐII",
+["to"] = "tჲ",
+["too"] = "tჲჲ",
+["hey"] = "lาɐy",
+["xd"] = "ӽd",
+["go"] = "gჲ",
+["goto"] = "gჲtჲ",
+["ok"] = "ol‹",
+["what"] = "wlาสṭ",
+["its"] = "iťร",
+["idk"] = "idl‹",
+["idc"] = "idჺ",
+["better"] = "lɔɐttɐr",
+["uhm"] = "ιɹlาm",
+["no"] = "ıาo",
+["not"] = "ıาot",
+["nsfw"] = "ıาsfฬ",
+["rules"] = "rιɹIɐs",
+["post"] = "pჲsṭ",
+["bend"] = "lɔeıาd",
+["over"] = "ჲѵɐr",
+["exploiters"] = "ɐxpIoitɐrร",
+["exploit"] = "ɐxpIoit",
+["cheater"] = "clาɐสtɐr",
+["most"] = "ıาาჲst",
+["important"] = "iıาาpჲrtสıาt",
+["thing"] = "tlาiıาဌ",
+["hang"] = "lาสıาg",
+["up"] = "ιɹp",
+["on"] = "oıา",
+["ah"] = "alา",
+["ahh"] = "alาlา",
+["gtfo"] = "ဌtfׂׂׂׂׂׂׂׂჲ",
+["trans"] = "trสıาร",
+["ashes"] = "สslาɐs",
+["woman"] = "woıาาสıา",
+["come"] = "coıาาɐ",
+["doxxing"] = "dჲӽӽiıาဌ",
+["someone"] = "soıาาɐoıาɐ",
+["yeah"] = "yɐสlา",
+["yea"] = "yɐส",
+["years"] = "yɐสꞅs",
+["balls"] = "lɔสIIs",
+["ball"] = "lɔสII",
+["finger"] = "fịıาgɐr",
+["fem"] = "fɐıาา",
+["femboy"] = "fɐıาาlɔoy",
+["horny"] = "lาჲrıาy",
+["losers"] = "Ioรɐrร",
+["loser"] = "Iჲsɐr",
+["lose"] = "Iჲsɐ",
+["losed"] = "Iჲsɐd",
+["bondage"] = "lɔoıาdสgɐ",
+["inside"] = "iıาsidɐ",
+["outside"] = "oιɹtidɐ",
+["deepside"] = "dɐɐpsidɐ",
+["deep"] = "dɐɐp",
+["breast"] = "lɔrɐสรt",
+["nipple"] = "ıาippIɐ",
+["hardcore"] = "lาสrdcჲrɐ",
+["asshoe"] = "ลรรlาoe",
+["back"] = "lɔสcl‹",
+["diddy"] = "ԀịԀԀұ",
+["dihhhh"] = "dilาlาlาlา",
+["dihhhhh"] = "dilาlาlาlา",
+["dihhhhhh"] = "dilาlาlาlาlาlา",
+["dihhhhhhh"] = "dilาlาlาlาlาlาlา",
+["dihhhhhhhh"] = "dilาlาlาlาlาlาlา",
+["dihhhhhhhhh"] = "dilาlาlาlาlาlาlาlาlา",
+["dihhhhhhhhhh"] = "dilาlาlาlาlาlาlาlาlา",
+["get"] = "gɐť",
+["nut"] = "ıาιɹt",
+["nuts"] = "ıาιɹts",
+["out"] = "ჲιɹt",
+["tuff"] = "ṭιɹff",
+["that"] = "tlาสt",
+["then"] = "tlาeıา",
+["pink"] = "piıาl‹",
+["mouth"] = "ıาาoιɹtlา",
+["hand"] = "lาสıาd",
+["leg"] = "Iɐg",
+["legs"] = "Iɐgร",
+["brown"] = "lɔroฬıา",
+["cucumber"] = "cιɹcιɹıาาlɔɐr",
+["pencil"] = "pɐıาciI",
+["mother"] = "ıาาჲtlาɐr",
+["of"] = "ჲf",
+["son"] = "sჲıา",
+["head"] = "lาɐสd",
+["dickhead"] = "diჺl‹lาɐสd",
+["jackass"] = "ȷ۬สcl‹ลรร",
+["wanker"] = "wสıาl‹ɐr",
+["bastard"] = "lɔสรtสꞅԀ",
+["tosser"] = "tჲssɐrs",
+["arsehole"] = "สrsɐlาoӏɐ",
+["cockmuncher"] = "ჺჲჺl‹ıาาιɹıาclาɐr",
+["ballbag"] = "lɔสIIlɔสg",
+["pisshead"] = "pisslาɐสd",
+["dickbag"] = "Ԁịჺl‹lɔสg",
+["shithead"] = "slาitlาɐสd",
+["shitsack"] = "slาitsสჺl‹",
+["fucknut"] = "fιɹჺl‹ıาιɹt",
+["fuckface"] = "fιɹჺl‹fสჺɐ",
+["face"] = "fสჺɐ",
+["condom"] = "cჲıาdჲıาา",
+["condo"] = "cჲıาdჲ",
+["hashtag"] = "lาสslาtสg",
+["tag"] = "tสဌ",
+["so"] = "sჲ",
+["well"] = "ฬɐӏӏ",
+["was"] = "ฬสs",
+["if"] = "ịf",
+["pov"] = "poѵ",
+["btw"] = "lɔtw",
+["tho"] = "tlาჲ",
+["best"] = "lɔɐst",
+["real"] = "rɐสI",
+["life"] = "Iịfɐ",
+["wdym"] = "wdұıาา",
+["need"] = "ıาɐɐd",
+["we"] = "wɐ",
+["record"] = "rɐჺჲrd",
+["god"] = "gჲd",
+["gods"] = "gჲdร",
+["stop"] = "sťop",
+["see"] = "sɐɐ",
+["ayo"] = "สyჲ",
+["pants"] = "pสıาts",
+["pant"] = "pสıาt",
+["little"] = "IittIɐ",
+["brat"] = "lɔrสt",
+["brats"] = "lɔrสts",
+["nake"] = "ıาสkɐ",
+["naked"] = "ıาสkɐd",
+["watch"] = "wสtჺlา",
+["loli"] = "IჲIi",
+["lolita"] = "IჲIitส",
+["adult"] = "สdιɹlt",
+["adults"] = "สdιɹlts",
+["family"] = "fสıาาily",
+["ok?"] = "ol‹?",
+["where"] = "wlาɐrɐ",
+["wheres"] = "wlาɐrɐs",
+["inch"] = "iıาclา",
+["inc"] = "iıาc",
+["stealed"] = "stɐสlɐd",
+["stole"] = "stჲlɐ",
+["steal"] = "stɐaสl",
+["steals"] = "stɐaสls",
+["stealing"] = "stɐaสliıาg",
+["stoles"] = "stჲlɐs",
+["do"] = "dჲ",
+["furry"] = "fιɹrrұ",
+["know"] = "l‹ıาow",
+["right"] = "riဌlาt",
+["destroy"] = "dɐรtrჲy",
+["step"] = "stɐp",
+["were"] = "ฬɐrɐ",
+["youre"] = "yoιɹrɐ",
+["re"] = "rɐ",
+["be"] = "lɔe",
+["jeffrey"] = "jɐffꞅɐy",
+["epstein"] = "ɐpstɐiıา",
+["bath"] = "lɔatlา",
+["homeless"] = "lาoıาาlɐss",
+["ew"] = "ɐw",
+["eww"] = "ɐww",
+["ewww"] = "ɐwww",
+["ewwww"] = "ɐwwww",
+["ewwwww"] = "ɐwwwww",
+["ewwwwww"] = "ɐwwwwww",
+["ewwwwwww"] = "ɐwwwwwww",
+["ewwwwwwww"] = "ɐwwwwwwwww",
+["stinky"] = "stiıาl‹y",
+["smell"] = "sıาาɐll",
+["one"] = "oıาɐ",
+["we're"] = "wɐ'rɐ",
+["always"] = "สlฬสys",
+["game"] = "gสmɐ",
+["copy"] = "cჲpy",
+["guys"] = "gιɹys",
+["guy"] = "gιɹy",
+["rage"] = "rสgɐ",
+["bait"] = "lɔสit",
+["codes"] = "cჲdɐs",
+["code"] = "cჲdɐ",
+["code"] = "cჲdɐiıาg",
+["hacker"] = "hสcl‹ɐr",
+["selamkardes"] = "sɐlสmkสrdɐs",
+["selamkardes"] = "sɐlสmkสrdɐsɐs",
+["team"] = "tɐสm",
+["teams"] = "tɐสms",
+["teaming"] = "tɐสmiıาg",
+["teamers"] = "tɐสmɐrs",
+["bypass"] = "lɔypสss",
+["bypassing"] = "lɔypสssiıาg",
+["bypasser"] = "lɔypสssɐr",
+["chatbypass"] = "clาสtlɔypสss",
+["chatbypassing"] = "clาสtlɔypสssiıาg",
+["chatbypassɐr"] = "clาสtlɔypสssɐr",
+["made"] = "mสdɐ",
+["mades"] = "mสdɐs",
+["make"] = "mสkɐ",
+["makes"] = "mสkɐs",
+["by"] = "lɔy",
+["bby"] = "lɔlɔy",
+["seeing"] = "sɐɐiıาg",
+["seek"] = "sɐɐk",
+["seeks"] = "sɐɐks",
+["seeking"] = "sɐɐkiıาg",
+["only"] = "oıาly",
+["onlys"] = "oıาlys",
+["onlyfan"] = "oıาlyfสıา",
+["onlyfans"] = "oıาlyfสıาs",
+["butt"] = "lɔιɹtt",
+["butts"] = "lɔιɹtts",
+["here"] = "lาɐrɐ",
+["heres"] = "lาɐrɐs",
+["hero"] = "lาɐro",
+["heros"] = "lาɐros",
+["hacker"] = "lาสckɐr",
+["hackers"] = "lาสckɐrs",
+["hackering"] = "lาสckɐriıาg",
+["program"] = "prჲgrสıาา",
+["programs"] = "prჲgrสıาาs",
+["programing"] = "prჲgrสıาาiıาg",
+["programming"] = "prჲgrสıาาıาาiıาg",
+["programers"] = "prჲgrสıาาɐrs",
+["platform"] = "plสtfჲrm",
+["platforms"] = "plสtfჲrms",
+["yk"] = "yl‹",
+["mb"] = "mlɔ",
+["nvm"] = "ıาѵm",
+["ik"] = "il‹",
+["carry"] = "ჺสrry",
+["carryed"] = "ჺสrryɐd",
+["found"] = "foιɹıาd",
+["soup"] = "soιɹp",
+["soap"] = "sჲสp",
+["done"] = "doıาɐ",
+["water"] = "wสtɐr",
+["cute"] = "cιɹtɐ",
+["cutie"] = "cιɹtiɐ",
+["cutes"] = "cιɹtɐs",
+["cut"] = "cιɹt",
+["cuts"] = "cιɹts",
+["uh"] = "ιɹh",
+["oh"] = "ჲh",
+["misclick"] = "ıาาisჺliჺk",
+["click"] = "ჺliჺk",
+["miss"] = "ıาาiss",
+["sir"] = "sịꞅ",
+["power"] = "pჲwɐr",
+["powers"] = "pჲwɐrs",
+["powerfull"] = "pჲwɐrfιɹll",
+["hand"] = "hสıาd",
+["hands"] = "hสıาds",
+["coolkid"] = "cჲvll‹id",
+["stoled"] = "รtჲlɐd",
+["guy"] = "gιɹy",
+["red"] = "rɐd",
+["tails"] = "tสilร",
+["purple"] = "ꞁↄιɹrplɐ",
+["blue"] = "lɔlιɹɐ",
+["gray"] = "grสy",
+["white"] = "ฬlาitɐ",
+["uhh"] = "ιɹlาh",
+["ohh"] = "ჲlาh",
+["uhhh"] = "ιɹlาlาh",
+["ohhh"] = "ჲlาlาh",
+["ohhhh"] = "ჲlาlาhh",
+["ohhhhh"] = "ჲlาlาhhh",
+["ohhhhhh"] = "ჲlาlาhhhh",
+["ohhhhhhh"] = "ჲlาlาhhhhh",
+["ohhhhhhhh"] = "ჲlาlาhhhhhh",
+["ohhhhhhhhh"] = "ჲlาlาhhhhhhh",
+["ohhhhhhhhhh"] = "ჲlาlาhhhhhhhh",
+["ohhhhhhhhhhh"] = "ჲlาlาhhhhhhhhh",
+["uhhh"] = "ιɹlาlาh",
+["uhhhh"] = "ιɹlาlาhh",
+["uhhhhh"] = "ιɹlาlาhhh",
+["uhhhhhh"] = "ιɹlาlาhhhh",
+["uhhhhhhh"] = "ιɹlาlาhhhhh",
+["uhhhhhhhh"] = "ιɹlาlาhhhhhh",
+["uhhhhhhhhh"] = "ιɹlาlาhhhhhhh",
+["uhhhhhhhhhh"] = "ιɹlาlาhhhhhhhh",
+["uhhhhhhhhhhh"] = "ιɹlาlาhhhhhhhhh",
+["good"] = "gჲჲd",
+["lady"] = "lสdy",
+["cutely"] = "ჺιɹtɐly",
+["think"] = "tlาiıาl‹",
+["maybe"] = "mสylɔɐ",
+["butter"] = "lɔιɹttɐr",
+["butterfly"] = "lɔιɹttɐrfly",
+["oil"] = "ჲil",
+["toilet"] = "tჲilɐt",
+["paper"] = "ꞁↄสpɐr",
+["papers"] = "ꞁↄสpɐrs",
+["toilets"] = "tჲilɐtร",
+["oils"] = "ჲilร",
+["soaps"] = "รჲสps",
+["nail"] = "ıาสil",
+["nails"] = "ıาสilร",
+["last"] = "lสรt",
+["time"] = "timɐ",
+["lasts"] = "lสรtร",
+["lasting"] = "lสรtiıาg",
+["time"] = "timɐ",
+["times"] = "timɐร",
+["timeing"] = "timɐiıาg",
+["timers"] = "timɐrร",
+["nails"] = "ıาสilร",
+["continue"] = "ჺჲıาtinue",
+["about"] = "สlɔჲut",
+["massage"] = "mสรรage",
+["message"] = "mɐรรage",
+["messageing"] = "mɐรรageing",
+["messages"] = "mɐรรages",
+["massageing"] = "mสรรageing",
+["massages"] = "mสรรages",
+["abouts"] = "สlɔჲuts",
+["abouting"] = "สlɔჲuting",
+["continues"] = "ჺჲıาtinues",
+["too"] = "tჲჲ",
+["demon"] = "dɐmჲıา",
+["demons"] = "dɐmჲıาs",
+["angel"] = "สıาgɐl",
+["angels"] = "สıาgɐls",
+["cleaning"] = "ჺlɐสning",
+["clear"] = "ჺlɐสr",
+["clears"] = "ჺlɐสrs",
+["giant"] = "giสıาt",
+["huge"] = "hιɹgɐ",
+["tiny"] = "tiıาy",
+["mini"] = "ıาาiıาi",
+["juicy"] = "jιɹịჺұ",
+["look"] = "Iool‹",
+["gquy"] = "gιɹy",
+["guys"] = "gιɹys",
+["begging"] = "lɔɐggiıาg",
+["beg"] = "lɔɐg",
+["begs"] = "lɔɐgs",
+["yep"] = "yɐp",
+["yippie"] = "yịppịɐ",
+["lets"] = "lɐts",
+["destroyer"] = "dɐstrჲyɐr",
+["destroyer"] = "dɐstrჲy",
+["destroyer"] = "dɐstrჲys",
+["pocket"] = "pჲckɐt",
+["enough"] = "eıาoιɹglา",
+["for"] = "fჲr",
+["like"] = "lil‹ɐ",
+["likes"] = "lil‹ɐs",
+["roblox"] = "rჲlɔlჲx",
+["rid"] = "ꞅịd",
+["addiction"] = "สddiჺtioıา",
+["addictions"] = "สddiჺtioıาs",
+["masturbation"] = "ıาาastιɹrlɔatioıา",
+["masturabation"] = "ıาาastιɹralɔatioıา",
+["masturbations"] = "ıาาastιɹrlɔatioıาs",
+["masturbations"] = "ıาาastιɹralɔatioıาs",
+["clean"] = "clɐสıา",
+["clean"] = "clɐสıาgịꞅl",
+["clear"] = "clɐสr",
+["clean"] = "clɐสıาiıาg",
+["cleans"] = "clɐสıาs",
+["omg"] = "oıาาg",
+["yucky"] = "yιɹჺky",
+["gross"] = "gꞅჲss",
+["which"] = "wlาiჺlา",
+["big"] = "lɔịg",
+["retard"] = "ꞅɐtลꞅd",
+}
+local CharMap = {
+    ["b"] = "lɔ", ["c"] = "ჺ", ["n"] = "ıา",
+    ["h"] = "lา", ["a"] = "ล", ["i"] = "ị",
+    ["l"] = "Ӏ", ["s"] = "ร",
+    ["k"] = "l‹", [" "] = " ", ["u"] = "ιɹ", ["x"] = "ẍ",
+    ["e"] = "ɐ",
+    ["v"] = "ѵ",
+    ["m"] = "ıาา",
+    ["o"] = "ჲ",
+}
+local ReverseMap = {}
+local sortedReverseKeys = {}
+for k, v in pairs(CharMap) do
+    ReverseMap[v] = k
+    table.insert(sortedReverseKeys, v)
+end
+table.sort(sortedReverseKeys, function(a, b) return #a > #b end)
+local symbolOn = false
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LP:WaitForChild("PlayerGui")
+ScreenGui.IgnoreGuiInset = true
+
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Frame.BackgroundTransparency = 0.1
+Frame.Size = UDim2.new(0, 400, 0, 300)
+Frame.Position = UDim2.new(0.5, -200, 0.5, -150)
+Frame.BorderSizePixel = 0
+Frame.ClipsDescendants = true
+local UICorner = Instance.new("UICorner", Frame)
+UICorner.CornerRadius = UDim.new(0, 12)
+local UIGradient = Instance.new("UIGradient", Frame)
+UIGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 140, 200)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 110, 200))
+}
+UIGradient.Rotation = 45
+task.spawn(function()
+    while true do
+        TweenService:Create(UIGradient, TweenInfo.new(5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {Rotation = UIGradient.Rotation + 360}):Play()
+        task.wait(5)
+    end
+end)
+local FrameStroke = Instance.new("UIStroke", Frame)
+FrameStroke.Color = Color3.fromRGB(100, 100, 150)
+FrameStroke.Thickness = 1
+FrameStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+local Shadow = Instance.new("ImageLabel", Frame)
+Shadow.Size = UDim2.new(1, 20, 1, 20)
+Shadow.Position = UDim2.new(0, -10, 0, -10)
+Shadow.BackgroundTransparency = 1
+Shadow.Image = "rbxassetid://1316045217"
+Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+Shadow.ImageTransparency = 0.7
+Shadow.ScaleType = Enum.ScaleType.Slice
+Shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+Shadow.ZIndex = -1
+
+local Title = Instance.new("TextLabel", Frame)
+Title.Text = "convert bypass v1.2"
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Position = UDim2.new(0, 0, 0, 0)
+Title.BackgroundTransparency = 1
+Title.TextColor3 = Color3.fromRGB(255, 220, 0)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 24
+Title.TextStrokeTransparency = 0.8
+Title.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+
+local TextBox = Instance.new("TextBox", Frame)
+TextBox.Size = UDim2.new(0.95, -20, 0, 50)
+TextBox.Position = UDim2.new(0.025, 10, 0, 50)
+TextBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.PlaceholderText = "Enter your message here..."
+TextBox.Font = Enum.Font.Gotham
+TextBox.TextSize = 18
+TextBox.ClearTextOnFocus = false
+TextBox.TextWrapped = true
+TextBox.BackgroundTransparency = 0.1
+local TextBoxCorner = Instance.new("UICorner", TextBox)
+TextBoxCorner.CornerRadius = UDim.new(0, 8)
+local TextBoxGradient = Instance.new("UIGradient", TextBox)
+TextBoxGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 140, 200)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 110, 200))
+}
+TextBoxGradient.Rotation = 45
+task.spawn(function()
+    while true do
+        TweenService:Create(TextBoxGradient, TweenInfo.new(5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {Rotation = TextBoxGradient.Rotation + 360}):Play()
+        task.wait(5)
+    end
+end)
+local TextBoxStroke = Instance.new("UIStroke", TextBox)
+TextBoxStroke.Color = Color3.fromRGB(100, 100, 150)
+TextBoxStroke.Thickness = 1
+TextBoxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+local ButtonContainer = Instance.new("Frame", Frame)
+ButtonContainer.Size = UDim2.new(0.95, -20, 0, 120)
+ButtonContainer.Position = UDim2.new(0.025, 10, 0, 110)
+ButtonContainer.BackgroundTransparency = 1
+local ButtonLayout = Instance.new("UIGridLayout", ButtonContainer)
+ButtonLayout.CellSize = UDim2.new(0.32, -5, 0, 40)
+ButtonLayout.CellPadding = UDim2.new(0, 10, 0, 10)
+ButtonLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ButtonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local function createButton(text, color)
+    local Button = Instance.new("TextButton")
+    Button.Text = text
+    Button.BackgroundColor3 = color
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Button.Font = Enum.Font.GothamBold
+    Button.TextSize = 14
+    Button.TextScaled = true
+    Button.Parent = ButtonContainer
+    local ButtonCorner = Instance.new("UICorner", Button)
+    ButtonCorner.CornerRadius = UDim.new(0, 8)
+    local ButtonGradient = Instance.new("UIGradient", Button)
+    ButtonGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, color),
+        ColorSequenceKeypoint.new(1, color:Lerp(Color3.fromRGB(255, 255, 255), 0.1))
+    }
+    local ButtonStroke = Instance.new("UIStroke", Button)
+    ButtonStroke.Color = Color3.fromRGB(255, 255, 255)
+    ButtonStroke.Transparency = 0.8
+    ButtonStroke.Thickness = 1
+    Button.MouseEnter:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.2), {BackgroundTransparency = 0.1}):Play()
+        TweenService:Create(ButtonStroke, TweenInfo.new(0.2), {Transparency = 0.5}):Play()
+    end)
+    Button.MouseLeave:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
+        TweenService:Create(ButtonStroke, TweenInfo.new(0.2), {Transparency = 0.8}):Play()
+    end)
+    return Button
+end
+
+local ConvertBtn = createButton("🔄 Convert", Color3.fromRGB(70, 130, 180))
+local AntiTagBtn = createButton("🚫 Anti Tag (OFF)", Color3.fromRGB(120, 0, 0))
+
+local CloseButton = Instance.new("TextButton", Frame)
+CloseButton.Text = "❌"
+CloseButton.Size = UDim2.new(0, 30, 0, 30)
+CloseButton.Position = UDim2.new(1, -40, 0, 5)
+CloseButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.TextSize = 20
+local CloseButtonCorner = Instance.new("UICorner", CloseButton)
+CloseButtonCorner.CornerRadius = UDim.new(0, 6)
+local CloseButtonGradient = Instance.new("UIGradient", CloseButton)
+CloseButtonGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 0, 0)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 0, 0))
+}
+local CloseButtonStroke = Instance.new("UIStroke", CloseButton)
+CloseButtonStroke.Color = Color3.fromRGB(255, 255, 255)
+CloseButtonStroke.Transparency = 0.8
+CloseButtonStroke.Thickness = 1
+CloseButton.MouseEnter:Connect(function()
+    TweenService:Create(CloseButton, TweenInfo.new(0.2), {BackgroundTransparency = 0.1}):Play()
+    TweenService:Create(CloseButtonStroke, TweenInfo.new(0.2), {Transparency = 0.5}):Play()
+end)
+CloseButton.MouseLeave:Connect(function()
+    TweenService:Create(CloseButton, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
+    TweenService:Create(CloseButtonStroke, TweenInfo.new(0.2), {Transparency = 0.8}):Play()
+end)
+
+CloseButton.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+local MinimizeButton = Instance.new("TextButton", Frame)
+MinimizeButton.Text = "-"
+MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
+MinimizeButton.Position = UDim2.new(1, -80, 0, 5)
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.Font = Enum.Font.GothamBold
+MinimizeButton.TextSize = 20
+local MinimizeButtonCorner = Instance.new("UICorner", MinimizeButton)
+MinimizeButtonCorner.CornerRadius = UDim.new(0, 6)
+local MinimizeButtonGradient = Instance.new("UIGradient", MinimizeButton)
+MinimizeButtonGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 165, 0)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 120, 0))
+}
+local MinimizeButtonStroke = Instance.new("UIStroke", MinimizeButton)
+MinimizeButtonStroke.Color = Color3.fromRGB(255, 255, 255)
+MinimizeButtonStroke.Transparency = 0.8
+MinimizeButtonStroke.Thickness = 1
+MinimizeButton.MouseEnter:Connect(function()
+    TweenService:Create(MinimizeButton, TweenInfo.new(0.2), {BackgroundTransparency = 0.1}):Play()
+    TweenService:Create(MinimizeButtonStroke, TweenInfo.new(0.2), {Transparency = 0.5}):Play()
+end)
+MinimizeButton.MouseLeave:Connect(function()
+    TweenService:Create(MinimizeButton, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
+    TweenService:Create(MinimizeButtonStroke, TweenInfo.new(0.2), {Transparency = 0.8}):Play()
+end)
+
+
+local AutoTranslateButton = Instance.new("TextButton", Frame)
+AutoTranslateButton.Size = UDim2.new(0, 120, 0, 30)
+AutoTranslateButton.Position = UDim2.new(0, 70, 1, -40)
+AutoTranslateButton.Text = "Auto Translate"
+AutoTranslateButton.Font = Enum.Font.GothamBold
+AutoTranslateButton.TextSize = 14
+AutoTranslateButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoTranslateButton.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+Instance.new("UICorner", AutoTranslateButton).CornerRadius = UDim.new(0, 8)
+local AutoTranslateGradient = Instance.new("UIGradient", AutoTranslateButton)
+AutoTranslateGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 100, 150)), ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 50, 100))}
+
+local CreditsButton = Instance.new("TextButton", Frame)
+CreditsButton.Size = UDim2.new(0, 120, 0, 30)
+CreditsButton.Position = UDim2.new(0, 210, 1, -40)
+CreditsButton.Text = "Credits"
+CreditsButton.Font = Enum.Font.GothamBold
+CreditsButton.TextSize = 14
+CreditsButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CreditsButton.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+Instance.new("UICorner", CreditsButton).CornerRadius = UDim.new(0, 8)
+local CreditsGradient = Instance.new("UIGradient", CreditsButton)
+CreditsGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 100, 150)), ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 50, 100))}
+
+
+local CreditsPanel = Instance.new("Frame", ScreenGui)
+CreditsPanel.Size = UDim2.new(0, 280, 0, 220)
+CreditsPanel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+CreditsPanel.BackgroundTransparency = 0.1
+CreditsPanel.Visible = false
+CreditsPanel.ClipsDescendants = true
+CreditsPanel.ZIndex = 50
+local CreditsPanelGradient = Instance.new("UIGradient", CreditsPanel)
+CreditsPanelGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 140, 200)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 110, 200))
+}
+CreditsPanelGradient.Rotation = 45
+task.spawn(function()
+    while true do
+        TweenService:Create(CreditsPanelGradient, TweenInfo.new(5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {Rotation = CreditsPanelGradient.Rotation + 360}):Play()
+        task.wait(5)
+    end
+end)
+Instance.new("UIStroke", CreditsPanel).Color = Color3.fromRGB(100, 100, 150)
+Instance.new("UIStroke", CreditsPanel).Thickness = 1
+Instance.new("UICorner", CreditsPanel).CornerRadius = UDim.new(0, 8)
+local CreditsPanelLayout = Instance.new("UIListLayout", CreditsPanel)
+CreditsPanelLayout.Padding = UDim.new(0, 8)
+CreditsPanelLayout.SortOrder = Enum.SortOrder.LayoutOrder
+CreditsPanelLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+CreditsPanelLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+local CreditsPadding = Instance.new("UIPadding", CreditsPanel)
+CreditsPadding.PaddingTop = UDim.new(0, 10)
+
+local OwnerLabel = Instance.new("TextLabel", CreditsPanel)
+OwnerLabel.Size = UDim2.new(0.9, 0, 0, 25)
+OwnerLabel.BackgroundTransparency = 1
+OwnerLabel.Text = "1. ismet"
+OwnerLabel.Font = Enum.Font.FredokaOne
+OwnerLabel.TextSize = 20
+OwnerLabel.ZIndex = 51
+OwnerLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+
+local Helped1Label = Instance.new("TextLabel", CreditsPanel)
+Helped1Label.Size = UDim2.new(0.9, 0, 0, 25)
+Helped1Label.BackgroundTransparency = 1
+Helped1Label.Text = "----------------------------------------------------"
+Helped1Label.Font = Enum.Font.FredokaOne
+Helped1Label.TextSize = 20
+Helped1Label.ZIndex = 51
+Helped1Label.TextColor3 = Color3.fromRGB(255, 255, 0)
+
+local Helped2Label = Instance.new("TextLabel", CreditsPanel)
+Helped2Label.Size = UDim2.new(0.9, 0, 0, 25)
+Helped2Label.BackgroundTransparency = 1
+Helped2Label.Text = "2. feariosz0"
+Helped2Label.Font = Enum.Font.FredokaOne
+Helped2Label.TextSize = 20
+Helped2Label.ZIndex = 51
+Helped2Label.TextColor3 = Color3.fromRGB(160, 32, 240)
+
+
+local ThankYouLabel = Instance.new("TextLabel", CreditsPanel)
+ThankYouLabel.Size = UDim2.new(0.9, 0, 0, 25)
+ThankYouLabel.BackgroundTransparency = 1
+ThankYouLabel.Text = "🎀 ~thanks for use~ 🎀"
+ThankYouLabel.Font = Enum.Font.FredokaOne
+ThankYouLabel.TextSize = 20
+ThankYouLabel.ZIndex = 51
+ThankYouLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+
+local function updateCreditsPosition()
+    CreditsPanel.Position = UDim2.new(
+        0, Frame.AbsolutePosition.X + Frame.AbsoluteSize.X + 10,
+        0, Frame.AbsolutePosition.Y + (Frame.AbsoluteSize.Y - CreditsPanel.AbsoluteSize.Y) + 6
+    )
+end
+CreditsButton:GetPropertyChangedSignal("AbsolutePosition"):Connect(updateCreditsPosition)
+Frame:GetPropertyChangedSignal("AbsolutePosition"):Connect(updateCreditsPosition)
+updateCreditsPosition()
+local creditsOpen = false
+CreditsButton.MouseButton1Click:Connect(function()
+    creditsOpen = not creditsOpen
+    CreditsPanel.Visible = creditsOpen
+    updateCreditsPosition()
+    TweenService:Create(CreditsButton, TweenInfo.new(0.2), {BackgroundTransparency = creditsOpen and 0.3 or 0}):Play()
+end)
+
+
+local AutoTranslatePanel = Instance.new("Frame", ScreenGui)
+AutoTranslatePanel.Size = UDim2.new(0, 280, 0, 300)
+AutoTranslatePanel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+AutoTranslatePanel.BackgroundTransparency = 0.1
+AutoTranslatePanel.Visible = false
+AutoTranslatePanel.ClipsDescendants = true
+AutoTranslatePanel.ZIndex = 50
+local AutoTranslatePanelGradient = Instance.new("UIGradient", AutoTranslatePanel)
+AutoTranslatePanelGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 140, 200)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 110, 200))
+}
+AutoTranslatePanelGradient.Rotation = 45
+task.spawn(function()
+    while true do
+        TweenService:Create(AutoTranslatePanelGradient, TweenInfo.new(5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {Rotation = AutoTranslatePanelGradient.Rotation + 360}):Play()
+        task.wait(5)
+    end
+end)
+Instance.new("UIStroke", AutoTranslatePanel).Color = Color3.fromRGB(100, 100, 150)
+Instance.new("UIStroke", AutoTranslatePanel).Thickness = 1
+Instance.new("UICorner", AutoTranslatePanel).CornerRadius = UDim.new(0, 8)
+local AutoTranslatePanelLayout = Instance.new("UIListLayout", AutoTranslatePanel)
+AutoTranslatePanelLayout.Padding = UDim.new(0, 8)
+AutoTranslatePanelLayout.SortOrder = Enum.SortOrder.LayoutOrder
+AutoTranslatePanelLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+AutoTranslatePanelLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+Instance.new("UIPadding", AutoTranslatePanel).PaddingTop = UDim.new(0, 10)
+
+local YourLangLabel = Instance.new("TextLabel", AutoTranslatePanel)
+YourLangLabel.Size = UDim2.new(0.9, 0, 0, 25)
+YourLangLabel.BackgroundTransparency = 1
+YourLangLabel.Text = "Select Your Language:"
+YourLangLabel.Font = Enum.Font.FredokaOne
+YourLangLabel.TextSize = 20
+YourLangLabel.ZIndex = 51
+YourLangLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local YourLangDropdown = Instance.new("TextButton", AutoTranslatePanel)
+YourLangDropdown.Size = UDim2.new(0.8, 0, 0, 30)
+YourLangDropdown.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+YourLangDropdown.Text = "tr (Turkish)"
+YourLangDropdown.Font = Enum.Font.Gotham
+YourLangDropdown.TextSize = 16
+YourLangDropdown.ZIndex = 51
+Instance.new("UICorner", YourLangDropdown).CornerRadius = UDim.new(0, 8)
+
+local YourLangSearch = Instance.new("TextBox", AutoTranslatePanel)
+YourLangSearch.Size = UDim2.new(0.8, 0, 0, 30)
+YourLangSearch.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+YourLangSearch.TextColor3 = Color3.fromRGB(255, 255, 255)
+YourLangSearch.PlaceholderText = "Search language..."
+YourLangSearch.Font = Enum.Font.Gotham
+YourLangSearch.TextSize = 16
+YourLangSearch.Visible = false
+YourLangSearch.ZIndex = 51
+Instance.new("UICorner", YourLangSearch).CornerRadius = UDim.new(0, 8)
+
+local YourLangScrollingFrame = Instance.new("ScrollingFrame", AutoTranslatePanel)
+YourLangScrollingFrame.Size = UDim2.new(0.8, 0, 0, 150)
+YourLangScrollingFrame.BackgroundTransparency = 1
+YourLangScrollingFrame.ScrollBarThickness = 6
+YourLangScrollingFrame.Visible = false
+YourLangScrollingFrame.ZIndex = 52
+Instance.new("UIListLayout", YourLangScrollingFrame).Padding = UDim.new(0, 5)
+
+local langList = {}
+for code, name in pairs(langs) do table.insert(langList, {code = code, name = name}) end
+table.sort(langList, function(a, b) return a.code < b.code end)
+
+for _, lang in ipairs(langList) do
+    local btn = Instance.new("TextButton", YourLangScrollingFrame)
+    btn.Size = UDim2.new(1, 0, 0, 25)
+    btn.Text = lang.code .. " (" .. lang.name .. ")"
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 14
+    btn.ZIndex = 53
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    btn.MouseButton1Click:Connect(function()
+        YourLang = lang.code
+        YourLangDropdown.Text = lang.code .. " (" .. lang.name .. ")"
+        YourLangScrollingFrame.Visible = false
+        YourLangSearch.Visible = false
+        NotificationLibrary.Info("Your Language: " .. lang.name, "Updated")
+    end)
+end
+
+local function updateYourLangCanvas()
+    local visibleCount = 0
+    for _, child in ipairs(YourLangScrollingFrame:GetChildren()) do
+        if child:IsA("TextButton") and child.Visible then visibleCount = visibleCount + 1 end
+    end
+    YourLangScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, visibleCount * 30)
+end
+YourLangSearch:GetPropertyChangedSignal("Text"):Connect(function()
+    local searchText = YourLangSearch.Text:lower()
+    for _, btn in ipairs(YourLangScrollingFrame:GetChildren()) do
+        if btn:IsA("TextButton") then
+            local langText = btn.Text:lower()
+            btn.Visible = (searchText == "" or langText:find(searchText))
+        end
+    end
+    updateYourLangCanvas()
+end)
+YourLangScrollingFrame.ChildAdded:Connect(updateYourLangCanvas)
+YourLangScrollingFrame.ChildRemoved:Connect(updateYourLangCanvas)
+updateYourLangCanvas()
+YourLangDropdown.MouseButton1Click:Connect(function()
+    local visible = not YourLangScrollingFrame.Visible
+    YourLangScrollingFrame.Visible = visible
+    YourLangSearch.Visible = visible
+    if not visible then YourLangSearch.Text = "" end
+end)
+
+local TargetLangLabel = Instance.new("TextLabel", AutoTranslatePanel)
+TargetLangLabel.Size = UDim2.new(0.9, 0, 0, 25)
+TargetLangLabel.BackgroundTransparency = 1
+TargetLangLabel.Text = "Select Target Language:"
+TargetLangLabel.Font = Enum.Font.FredokaOne
+TargetLangLabel.TextSize = 20
+TargetLangLabel.ZIndex = 51
+TargetLangLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local TargetLangDropdown = Instance.new("TextButton", AutoTranslatePanel)
+TargetLangDropdown.Size = UDim2.new(0.8, 0, 0, 30)
+TargetLangDropdown.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+TargetLangDropdown.Text = "en (English)"
+TargetLangDropdown.Font = Enum.Font.Gotham
+TargetLangDropdown.TextSize = 16
+TargetLangDropdown.ZIndex = 51
+Instance.new("UICorner", TargetLangDropdown).CornerRadius = UDim.new(0, 8)
+
+local TargetLangSearch = Instance.new("TextBox", AutoTranslatePanel)
+TargetLangSearch.Size = UDim2.new(0.8, 0, 0, 30)
+TargetLangSearch.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+TargetLangSearch.TextColor3 = Color3.fromRGB(255, 255, 255)
+TargetLangSearch.PlaceholderText = "Search language..."
+TargetLangSearch.Font = Enum.Font.Gotham
+TargetLangSearch.TextSize = 16
+TargetLangSearch.Visible = false
+TargetLangSearch.ZIndex = 51
+Instance.new("UICorner", TargetLangSearch).CornerRadius = UDim.new(0, 8)
+
+local TargetLangScrollingFrame = Instance.new("ScrollingFrame", AutoTranslatePanel)
+TargetLangScrollingFrame.Size = UDim2.new(0.8, 0, 0, 150)
+TargetLangScrollingFrame.BackgroundTransparency = 1
+TargetLangScrollingFrame.ScrollBarThickness = 6
+TargetLangScrollingFrame.Visible = false
+TargetLangScrollingFrame.ZIndex = 52
+Instance.new("UIListLayout", TargetLangScrollingFrame).Padding = UDim.new(0, 5)
+
+for _, lang in ipairs(langList) do
+    local btn = Instance.new("TextButton", TargetLangScrollingFrame)
+    btn.Size = UDim2.new(1, 0, 0, 25)
+    btn.Text = lang.code .. " (" .. lang.name .. ")"
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 14
+    btn.ZIndex = 53
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    btn.MouseButton1Click:Connect(function()
+        tr_lang = lang.code
+        TargetLangDropdown.Text = lang.code .. " (" .. lang.name .. ")"
+        TargetLangScrollingFrame.Visible = false
+        TargetLangSearch.Visible = false
+        NotificationLibrary.Info("Target Language: " .. lang.name, "Updated")
+    end)
+end
+
+local function updateTargetLangCanvas()
+    local visibleCount = 0
+    for _, child in ipairs(TargetLangScrollingFrame:GetChildren()) do
+        if child:IsA("TextButton") and child.Visible then visibleCount = visibleCount + 1 end
+    end
+    TargetLangScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, visibleCount * 30)
+end
+TargetLangSearch:GetPropertyChangedSignal("Text"):Connect(function()
+    local searchText = TargetLangSearch.Text:lower()
+    for _, btn in ipairs(TargetLangScrollingFrame:GetChildren()) do
+        if btn:IsA("TextButton") then
+            local langText = btn.Text:lower()
+            btn.Visible = (searchText == "" or langText:find(searchText))
+        end
+    end
+    updateTargetLangCanvas()
+end)
+TargetLangScrollingFrame.ChildAdded:Connect(updateTargetLangCanvas)
+TargetLangScrollingFrame.ChildRemoved:Connect(updateTargetLangCanvas)
+updateTargetLangCanvas()
+TargetLangDropdown.MouseButton1Click:Connect(function()
+    local visible = not TargetLangScrollingFrame.Visible
+    TargetLangScrollingFrame.Visible = visible
+    TargetLangSearch.Visible = visible
+    if not visible then TargetLangSearch.Text = "" end
+end)
+
+local ToggleLabel = Instance.new("TextLabel", AutoTranslatePanel)
+ToggleLabel.Size = UDim2.new(0.9, 0, 0, 25)
+ToggleLabel.BackgroundTransparency = 1
+ToggleLabel.Text = "OFF"
+ToggleLabel.Font = Enum.Font.FredokaOne
+ToggleLabel.TextSize = 20
+ToggleLabel.ZIndex = 51
+ToggleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local ToggleButton = Instance.new("TextButton", AutoTranslatePanel)
+ToggleButton.Size = UDim2.new(0.8, 0, 0, 30)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+ToggleButton.Text = "Auto Translate"
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.TextSize = 14
+ToggleButton.ZIndex = 51
+Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 8)
+ToggleButton.MouseButton1Click:Connect(function()
+    auto_translate_on = not auto_translate_on
+    ToggleLabel.Text = "" .. (auto_translate_on and "ON" or "OFF")
+    ToggleButton.BackgroundColor3 = auto_translate_on and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+    NotificationLibrary.Info("" .. (auto_translate_on and "ON" or "OFF"), "Updated")
+end)
+
+local function updateAutoTranslatePosition()
+    AutoTranslatePanel.Position = UDim2.new(
+        0, Frame.AbsolutePosition.X - AutoTranslatePanel.AbsoluteSize.X - 10,
+        0, Frame.AbsolutePosition.Y + (Frame.AbsoluteSize.Y - AutoTranslatePanel.AbsoluteSize.Y) + 57
+    )
+end
+AutoTranslateButton:GetPropertyChangedSignal("AbsolutePosition"):Connect(updateAutoTranslatePosition)
+Frame:GetPropertyChangedSignal("AbsolutePosition"):Connect(updateAutoTranslatePosition)
+updateAutoTranslatePosition()
+local autoTranslateOpen = false
+AutoTranslateButton.MouseButton1Click:Connect(function()
+    autoTranslateOpen = not autoTranslateOpen
+    AutoTranslatePanel.Visible = autoTranslateOpen
+    updateAutoTranslatePosition()
+    TweenService:Create(AutoTranslateButton, TweenInfo.new(0.2), {BackgroundTransparency = autoTranslateOpen and 0.3 or 0}):Play()
+end)
+
+
+local isMinimized = false
+local originalSize = Frame.Size
+local minimizedSize = UDim2.new(0, 400, 0, 40)
+local contentItems = {TextBox, ButtonContainer, AutoTranslateButton, CreditsButton}
+MinimizeButton.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        MinimizeButton.Text = "+"
+        TweenService:Create(Frame, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = minimizedSize}):Play()
+        for _, item in ipairs(contentItems) do item.Visible = false end
+    else
+        MinimizeButton.Text = "-"
+        TweenService:Create(Frame, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = originalSize}):Play()
+        for _, item in ipairs(contentItems) do item.Visible = true end
+    end
+end)
+
+local dragging, dragInput, dragStart, startPos
+Frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = Frame.Position
+    end
+end)
+Frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        TweenService:Create(Frame, TweenInfo.new(0.1), {Position = newPos}):Play()
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+Frame.Position = UDim2.new(0.5, -200, 1.5, 0)
+TweenService:Create(Frame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -200, 0.5, -150)}):Play()
+
+
+local function handleConvert()
+    local text = TextBox.Text
+    if text == "" then return end
+    
+
+    if auto_translate_on then
+        local translated_text = translate(text, tr_lang, "auto")
+        if translated_text and translated_text ~= "" then
+            text = translated_text
+            NotificationLibrary.Info(" Message translated: " .. text, "Translation")
+        end
+    end
+    
+
+    text = text:gsub("۔߻ ", ""):gsub("۔﹙߻﹚۔", "")
+    local leadPunc = text:match("^[%p%s]+")
+    if leadPunc then
+        text = text:sub(#leadPunc + 1) .. leadPunc
+    end
+   
+    local cleanedText = ""
+    local i = 1
+    while i <= #text do
+        local found = false
+        for _, bypass in ipairs(sortedReverseKeys) do
+            if text:sub(i, i + #bypass - 1) == bypass then
+                cleanedText = cleanedText .. ReverseMap[bypass]
+                i = i + #bypass
+                found = true
+                break
+            end
+        end
+        if not found then
+            cleanedText = cleanedText .. text:sub(i, i)
+            i = i + 1
+        end
+    end
+    cleanedText = string.lower(cleanedText)
+    local words = string.split(cleanedText, " ")
+    local finalResult = {}
+    for _, word in ipairs(words) do
+        local prefix, core, suffix = word:match("^([^%w]*)(.-)([^%w]*)$")
+        if core and WordMap[core] then
+            table.insert(finalResult, (prefix or "") .. WordMap[core] .. (suffix or ""))
+        else
+            local bypassedWord = ""
+            for j = 1, #word do
+                local c = word:sub(j, j)
+                bypassedWord = bypassedWord .. (CharMap[c] or c)
+            end
+            table.insert(finalResult, bypassedWord)
+        end
+    end
+    local out = table.concat(finalResult, " ")
+    if symbolOn then
+        local endPunc = out:match("[%p%s]+$") or ""
+        if endPunc ~= "" then
+            out = endPunc .. out:sub(1, #out - #endPunc)
+        end
+        out = "۔߻ " .. out .. "۔﹙߻﹚۔"
+    end
+    
+    TextBox.Text = out
+    NotificationLibrary.Info("Test", "successfully")
+end
+
+AntiTagBtn.MouseButton1Click:Connect(function()
+    symbolOn = not symbolOn
+    AntiTagBtn.Text = symbolOn and "🚫 Anti Tag (ON)" or "🚫 Anti Tag (OFF)"
+    AntiTagBtn.BackgroundColor3 = symbolOn and Color3.fromRGB(0, 100, 200) or Color3.fromRGB(120, 0, 0)
+end)
+
+ConvertBtn.MouseButton1Click:Connect(handleConvert)
+
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.Return and TextBox:IsFocused() then
+        handleConvert()
+    end
+end)
+
+NotificationLibrary.Info("Set Your Language (From Account Settings) To Қазақ тเ่лเ่ ", "Thanks For Using ismet Convert Bypass")
